@@ -21,7 +21,8 @@ This not only **streamlines the process** but also **improves accuracy** and **s
 
 ## 🧠 Solution Architecture
 
-![System Architecture](./{A40B9040-644F-4A1F-877E-4065D85ACBA1}.png)
+![image](https://github.com/user-attachments/assets/39adfa83-9076-41f4-be30-28e4aaf482b7)
+
 
 ### Key Components:
 

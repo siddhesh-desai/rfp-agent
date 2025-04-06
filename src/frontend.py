@@ -4,10 +4,10 @@ import os
 import pymupdf
 from streamlit_pdf_viewer import pdf_viewer
 
-from agents.compliance_agent import ComplianceAgent
-from agents.checklist_agent import ChecklistAgent
+from agents.compliance_agent_optimised import ComplianceAgent
+from agents.checklist_agent_optimised import ChecklistAgent
 from scoring import calculate_compliance_score
-from agents.risk_analysis_agent import RiskAnalysisAgent
+from agents.risk_analysis_agent_optimised import RiskAnalysisAgent
 from agents.rag_agent import RAGAgent
 from agents.query_agent import QueryAgent
 from agents.report_agent import generate_pdf_report
@@ -37,10 +37,12 @@ def extract_text_from_pdf(pdf_path: str) -> str:
         return ""
 
 
-def use_rag_agent(question: str) -> str:
+def use_rag_agent(question: str, filename=None) -> str:
     query_agent = QueryAgent()
     context = "\n\n".join(
-        query_agent.retrieve_relevant_data(user_query=question, namespace="test")
+        query_agent.retrieve_relevant_data(
+            user_query=question, namespace="test", filename=filename, top_k=3
+        )
     )
     return (
         context
@@ -65,6 +67,7 @@ def init_session_state():
                 "content": "I'm here to assist you with your RFP analysis.",
             }
         ],
+        "filename": None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -80,17 +83,26 @@ def display_compliance_results():
     score = calculate_compliance_score(st.session_state.compliance_dict)
     with st.container(border=True):
         st.subheader("Compliance Score")
-        st.write(f"Score Percentage: {score['score_percentage']}%")
+
+        # st.write(f"Score Percentage: {score['score_percentage']}%")
+        if score["score_percentage"] < 50:
+            st.write("**Ineligible**")
+        else:
+            st.write("**Eligible**")
         st.write(
             f"Eligibility Satisfied: {score['criteria_matched']}/{score['total_criteria_evaluated']}"
         )
 
     for criteria in st.session_state.compliance_dict["compliance_criteria"]:
         icon = "✅" if criteria.get("matches") else "❌"
-        if "not found" in criteria["current"].lower():
+        if (
+            "not found" in criteria["current"].lower()
+            or "not available" in criteria["current"].lower()
+        ):
             icon = "❓"
         with st.expander(criteria["criteria"], icon=icon):
             st.write(criteria["required"])
+            st.write(criteria["importance"])
             st.write(f"Your Company Profile: {criteria['current']}")
             st.write("Eligible: Yes" if criteria.get("matches") else "Eligible: No")
             if not criteria.get("matches") and criteria.get("corrective_steps"):
@@ -103,7 +115,7 @@ def display_compliance_results():
 def main():
     init_session_state()
     st.set_page_config(
-        page_title="RFP Analysis", page_icon=":guardsman:", layout="wide"
+        page_title="RFP Analyser", page_icon=":guardsman:", layout="wide"
     )
 
     stage = st.session_state.process_stage
@@ -114,6 +126,7 @@ def main():
             uploaded_file = st.file_uploader("Upload the RFP Document", type=["pdf"])
             if uploaded_file and st.button("Analyse RFP"):
                 with st.spinner("Processing..."):
+                    st.session_state.filename = uploaded_file.name
                     save_path = os.path.abspath(
                         os.path.join("temp_files", uploaded_file.name)
                     )
@@ -126,8 +139,8 @@ def main():
                     st.session_state.process_stage = "compliance_check"
                     st.rerun()
 
-        st.title("RFP Analysis")
-        st.write("Upload your RFP document to get started.")
+        st.title("RFP Analyser")
+        st.write("Upload the RFP document to get started.")
 
     elif stage == "compliance_check":
         display_pdf_sidebar()
@@ -146,6 +159,7 @@ def main():
                 result = ComplianceAgent().invoke(
                     rfp_text=st.session_state.pdf_text,
                     company_profile=st.session_state.company_profile,
+                    filename=st.session_state.filename,
                 )
                 if result.get("error"):
                     st.error(result["error"])
@@ -167,7 +181,10 @@ def main():
                     st.write(f"Deadline: {item['deadline']}")
         else:
             with st.spinner("Generating checklist..."):
-                result = ChecklistAgent().invoke(rfp_text=st.session_state.pdf_text)
+                result = ChecklistAgent().invoke(
+                    rfp_text=st.session_state.pdf_text,
+                    filename=st.session_state.filename,
+                )
                 if result.get("error"):
                     st.error(result["error"])
                     return
@@ -191,6 +208,7 @@ def main():
                 result = RiskAnalysisAgent().invoke(
                     rfp_text=st.session_state.pdf_text,
                     company_profile=st.session_state.company_profile,
+                    filename=st.session_state.filename,
                 )
                 if result.get("error"):
                     st.error(result["error"])
@@ -233,7 +251,7 @@ def main():
                 st.write(prompt)
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    response = use_rag_agent(prompt)
+                    response = use_rag_agent(prompt, filename=st.session_state.filename)
                     st.write(response)
                     st.session_state.messages.append(
                         {"role": "assistant", "content": response}

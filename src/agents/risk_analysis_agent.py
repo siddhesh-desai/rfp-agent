@@ -1,15 +1,15 @@
-# src/risk_analysis_agent.py
-
 import os
+import logging
 import textwrap
 from typing import List, Dict, Any, Literal
+
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-import logging
 
-logger = logging.getLogger(__name__)
+# --- Logging Setup ---
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # --- Pydantic Models ---
@@ -21,7 +21,7 @@ class RiskItem(BaseModel):
         description="Estimated severity of the risk (High: Potential disqualifier/major obstacle, Medium: Requires significant attention/mitigation, Low: Minor challenge/manageable)."
     )
     mitigation_strategy: str = Field(
-        description="A plausible suggestion for how the company might address or mitigate this specific risk (e.g., 'Obtain required E&O insurance', 'Highlight specific personnel experience', 'Request clarification from issuer', 'Allocate additional resources')."
+        description="A plausible suggestion for how the company might address or mitigate this specific risk."
     )
 
 
@@ -32,39 +32,34 @@ class RiskAnalysisReport(BaseModel):
 
 
 class RiskAnalysisAgent:
-    """
-    Analyzes RFP and Company Profile texts to identify potential risks for the bidding company,
-    using Google Gemini.
-    """
+    """Analyzes RFP and Company Profile texts to identify potential risks for the bidding company using Google Gemini."""
 
     def __init__(self, model: str = "gemini-1.5-flash-latest"):
-        google_api_key = os.getenv("GEMINI_API_KEY")
-        if not google_api_key:
-            logger.error("GOOGLE_API_KEY environment variable is not set.")
-            raise ValueError("GOOGLE_API_KEY environment variable must be set.")
+        self.llm = self._initialize_llm(model)
+        self.structured_llm = self.llm.with_structured_output(RiskAnalysisReport)
+        self.prompt_template = self._build_prompt()
+
+    def _initialize_llm(self, model: str) -> ChatGoogleGenerativeAI:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            logger.error("GEMINI_API_KEY environment variable is not set.")
+            raise ValueError("GEMINI_API_KEY environment variable must be set.")
 
         try:
-            self.llm = ChatGoogleGenerativeAI(
+            logger.info(f"Initializing Gemini model '{model}'...")
+            return ChatGoogleGenerativeAI(
                 model=model,
-                google_api_key=google_api_key,
-                temperature=0.1,  # Slightly higher temp might help brainstorming mitigation
+                google_api_key=api_key,
+                temperature=0.1,
                 convert_system_message_to_human=True,
             )
-            # Bind the *RiskAnalysisReport* structure
-            self.structured_llm = self.llm.with_structured_output(RiskAnalysisReport)
-            logger.info(
-                f"Initialized RiskAnalysisAgent with ChatGoogleGenerativeAI model '{model}' and RiskAnalysisReport structure."
-            )
         except Exception as e:
-            logger.exception(
-                f"Failed to initialize Google AI model for RiskAnalysisAgent: {e}"
-            )
+            logger.exception(f"Failed to initialize Google AI model: {e}")
             raise
 
-        # --- PROMPT TEMPLATE for Risk Analysis ---
-        self.prompt_template = ChatPromptTemplate.from_template(
-            textwrap.dedent(
-                """
+    def _build_prompt(self) -> ChatPromptTemplate:
+        template = textwrap.dedent(
+            """
             **Role:** You are a strategic Risk Analyst AI. Your task is to analyze a Request for Proposal (RFP) and a Company Profile to identify potential risks *for the company* if they were to bid on this RFP.
 
             **Objective:** Based *only* on comparing the provided texts, identify potential risks stemming from requirement gaps, resource constraints, compliance issues, or ambiguities. For each risk, assess its severity and suggest a plausible mitigation strategy. Output a single JSON object adhering strictly to the 'RiskAnalysisReport' schema.
@@ -119,54 +114,43 @@ class RiskAnalysisAgent:
             }}
             ```
             """
-            )
         )
 
+        return ChatPromptTemplate.from_template(template)
+
     def invoke(self, rfp_text: str, company_profile: str) -> Dict[str, Any]:
-        """
-        Analyzes the RFP and company profile texts for potential risks using the Google model.
-
-        Args:
-            rfp_text (str): The full extracted text of the RFP.
-            company_profile (str): The full extracted text of the company profile.
-
-        Returns:
-            Dict[str, Any]: A dictionary containing the structured risk analysis report or an error message.
-        """
         if not rfp_text or not company_profile:
-            logger.error("RFP text or Company Profile text is empty for risk analysis.")
-            return {
-                "error": "RFP or Company Profile text cannot be empty for risk analysis."
-            }
+            logger.error("RFP or Company Profile text cannot be empty.")
+            return {"error": "RFP or Company Profile text cannot be empty."}
 
-        logger.info("Creating risk analysis chain with Google model...")
         try:
+            logger.info("Running risk analysis...")
             chain = self.prompt_template | self.structured_llm
-            logger.info("Invoking risk analysis chain...")
-            response = chain.invoke(
+            result = chain.invoke(
                 {"rfp_text": rfp_text, "company_profile": company_profile}
             )
-            logger.info(
-                "Successfully received structured risk analysis response from Google model."
-            )
-            return response.dict()  # Convert Pydantic model to dictionary
-
+            logger.info("Risk analysis completed successfully.")
+            return result.dict()
         except Exception as e:
-            logger.exception(
-                f"Error invoking risk analysis agent with Google model: {e}"
-            )
+            logger.exception(f"Risk analysis failed: {e}")
             return {
-                "error": f"Failed to generate risk analysis report using Google model. Error: {str(e)}"
+                "error": f"Failed to generate risk analysis report. Error: {str(e)}"
             }
 
 
 if __name__ == "__main__":
-    # Example usage
     from dotenv import load_dotenv
 
     load_dotenv()
+
     agent = RiskAnalysisAgent()
-    rfp_text = "This RFP requires a minimum of 5 years of experience in IT auditing, a presence in New York City, and certifications such as CISSP or CISA. Additionally, the company must provide evidence of $1M liability insurance coverage."
+
+    rfp_text = (
+        "This RFP requires a minimum of 5 years of experience in IT auditing, "
+        "a presence in New York City, and certifications such as CISSP or CISA. "
+        "Additionally, the company must provide evidence of $1M liability insurance coverage."
+    )
+
     company_profile = """
     Company Legal Name: Tech Solutions Inc.
     Location: New York City, NY
@@ -176,5 +160,6 @@ if __name__ == "__main__":
     Insurance Coverage: $1M General Liability Insurance, $500K E&O Insurance
     Key Personnel: Certified IT Auditors, Cybersecurity Analysts
     """
+
     result = agent.invoke(rfp_text, company_profile)
     print(result)

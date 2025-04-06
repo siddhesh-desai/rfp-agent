@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
+from agents.prompts import CHECKLIST_PROMPT, CHECKLIST_RAG_PROMPT
+from agents.query_agent import QueryAgent
+
 # --- Logging Configuration ---
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -56,42 +59,23 @@ class ChecklistAgent:
             raise
 
         self.prompt_template = ChatPromptTemplate.from_template(
-            textwrap.dedent(
-                """
-            You are a helpful assistant designed to extract structured checklists from government RFPs.
-
-            Given the following RFP paragraph, extract:
-            1. A checklist of deliverables or steps
-            2. For each item, provide:
-                - Priority (Low, Medium, High)
-                - Deadline (in YYYY-MM-DD format if available)
-
-            Respond ONLY in the following JSON format:
-
-            {{
-                "items": [
-                    {{
-                        "task": "...",
-                        "priority": "low | medium | high",
-                        "deadline": "YYYY-MM-DD"
-                    }},
-                    ...
-                ]
-            }}
-
-            RFP Paragraph:
-            {rfp_text}
-        """
-            )
+            textwrap.dedent(CHECKLIST_PROMPT)
         )
 
-    def invoke(self, rfp_text: str) -> Dict[str, Any]:
+    def invoke(self, rfp_text: str, filename=None) -> Dict[str, Any]:
         if not rfp_text.strip():
             logger.error("RFP text cannot be empty.")
             return {"error": "RFP text cannot be empty."}
 
         logger.info("Running checklist analysis on RFP text...")
         try:
+            # Comment Here
+            query_agent = QueryAgent()
+            rfp_text = query_agent.retrieve_relevant_data(
+                CHECKLIST_RAG_PROMPT, "test", filename, top_k=2
+            )
+            print(rfp_text)
+
             chain = self.prompt_template | self.structured_llm
             response = chain.invoke({"rfp_text": rfp_text})
             logger.info("Received structured response from Gemini model.")

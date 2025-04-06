@@ -44,7 +44,8 @@ class DataIngestor:
 
         for doc in chunks:
             if "dl_meta" in doc.metadata:
-                doc.metadata["dl_meta"] = json.dumps(doc.metadata["dl_meta"])
+                # doc.metadata["dl_meta"] = json.dumps(doc.metadata["dl_meta"])
+                doc.metadata["dl_meta"] = doc.metadata["dl_meta"]["origin"]["filename"]
 
         return chunks
 
@@ -113,4 +114,4 @@ if __name__ == "__main__":
     load_dotenv()
 
     data_ingestor = DataIngestor()
-    data_ingestor.ingest_pdf("files/1.pdf", "rfp-agent", "test")
+    data_ingestor.ingest_pdf("files/5.pdf", "rfp-agent", "test")

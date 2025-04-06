@@ -38,7 +38,7 @@ class QueryAgent:
 
     #     return (result.queries, result.namespaces)
 
-    def query_database(self, query, namespace, top_k):
+    def query_database(self, query, namespace, top_k, filename=None):
         """Database ko query karega and top_k results return karega"""
 
         query_embedding = self.pc.inference.embed(
@@ -47,12 +47,19 @@ class QueryAgent:
             parameters={"input_type": "query"},
         )
 
+        if filename:
+            filename = "files/" + filename
+            filterr = {"source": filename}
+        else:
+            filterr = None
+
         intermediate_results = self.index.query(
             namespace=namespace,
             vector=query_embedding[0].values,
             top_k=top_k,
             include_values=False,
             include_metadata=True,
+            filter=filterr,
         )
 
         if not intermediate_results["matches"]:
@@ -77,7 +84,7 @@ class QueryAgent:
 
         return retrieved_results_str
 
-    def retrieve_relevant_data(self, user_query, namespace):
+    def retrieve_relevant_data(self, user_query, namespace, filename=None, top_k=7):
         """User query ke hisaab se relevant data retrieve karega"""
 
         # queries, namespaces = self.choose_query_and_namespace(user_query)
@@ -85,6 +92,8 @@ class QueryAgent:
         retrieved_data = []
 
         # for query, namespace in zip(queries, namespaces):
-        retrieved_data.append(self.query_database(user_query, namespace, 10))
+        retrieved_data.append(
+            self.query_database(user_query, namespace, top_k, filename)
+        )
 
         return retrieved_data

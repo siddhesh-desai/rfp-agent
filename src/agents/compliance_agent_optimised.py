@@ -2,13 +2,15 @@ import os
 import logging
 import textwrap
 from typing import List, Dict, Any, Optional
+from enum import Enum
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
-from agents.prompts import COMPLIANCE_AGENT_PROMPT
+from agents.prompts import COMPLIANCE_AGENT_PROMPT, COMPLIANCE_RAG_PROMPT
+from agents.query_agent import QueryAgent
 
 # --- Logging Setup ---
 logger = logging.getLogger(__name__)
@@ -16,6 +18,12 @@ logging.basicConfig(level=logging.INFO)
 
 
 # --- Pydantic Models ---
+class importanceEnum(Enum):
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+
+
 class ComplianceCriterion(BaseModel):
     criteria: str = Field(
         description="Concise description of the specific eligibility criterion identified and compared (e.g., 'Required Service Scope', 'Minimum Years Experience', etc.)."
@@ -23,6 +31,10 @@ class ComplianceCriterion(BaseModel):
     required: str = Field(
         description="The specific requirement detail extracted directly from the RFP text."
     )
+    importance: importanceEnum = Field(
+        description="The importance of the requirement according to the RFP"
+    )
+
     current: str = Field(
         description="The corresponding status, value, or capability extracted directly from the company profile text. Use `not found` if missing."
     )
@@ -74,13 +86,23 @@ class ComplianceAgent:
             textwrap.dedent(COMPLIANCE_AGENT_PROMPT)
         )
 
-    def invoke(self, rfp_text: str, company_profile: str) -> Dict[str, Any]:
+    def invoke(
+        self, rfp_text: str, company_profile: str, filename=None
+    ) -> Dict[str, Any]:
         if not rfp_text or not company_profile:
             logger.error("RFP text or Company Profile text is empty.")
             return {"error": "RFP or Company Profile text cannot be empty."}
 
         try:
             logger.info("Creating and invoking dynamic analysis chain...")
+
+            # Comment Here
+            # query_agent = QueryAgent()
+            # rfp_text = query_agent.retrieve_relevant_data(
+            #     COMPLIANCE_RAG_PROMPT, "test", filename, top_k=1
+            # )
+            # print(rfp_text)
+
             chain = self.prompt_template | self.structured_llm
             response = chain.invoke(
                 {"rfp_text": rfp_text, "company_profile": company_profile}

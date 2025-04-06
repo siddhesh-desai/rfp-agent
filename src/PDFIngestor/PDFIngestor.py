@@ -29,41 +29,41 @@ class DataIngestor:
 
         self.pinecone = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 
-    # def load_pdf_into_docling_chunks(self, path_to_pdf):
-    #     """PDF ka docling banaega"""
-
-    #     loader = DoclingLoader(
-    #         file_path=path_to_pdf,
-    #         export_type=ExportType.DOC_CHUNKS,
-    #         chunker=HybridChunker(
-    #             tokenizer="sentence-transformers/all-MiniLM-L6-v2", max_tokens=1024
-    #         ),
-    #     )
-
-    #     chunks = loader.load()
-
-    #     for doc in chunks:
-    #         if "dl_meta" in doc.metadata:
-    #             doc.metadata["dl_meta"] = json.dumps(doc.metadata["dl_meta"])
-
-    #     return chunks
-
     def load_pdf_into_docling_chunks(self, path_to_pdf):
-        """Simple and fast PDF loader with basic chunking"""
+        """PDF ka docling banaega"""
 
-        # Read PDF text using PyMuPDF
-        text = ""
-        with pymupdf.open(path_to_pdf) as doc:
-            for page in doc:
-                text += page.get_text()
-
-        # Use LangChain's character splitter to chunk the text
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000, chunk_overlap=100, separators=["\n\n", "\n", ".", " "]
+        loader = DoclingLoader(
+            file_path=path_to_pdf,
+            export_type=ExportType.DOC_CHUNKS,
+            chunker=HybridChunker(
+                tokenizer="sentence-transformers/all-MiniLM-L6-v2", max_tokens=1024
+            ),
         )
-        chunks = splitter.create_documents([text])
+
+        chunks = loader.load()
+
+        for doc in chunks:
+            if "dl_meta" in doc.metadata:
+                doc.metadata["dl_meta"] = json.dumps(doc.metadata["dl_meta"])
 
         return chunks
+
+    # def load_pdf_into_docling_chunks(self, path_to_pdf):
+    #     """Simple and fast PDF loader with basic chunking"""
+
+    #     # Read PDF text using PyMuPDF
+    #     text = ""
+    #     with pymupdf.open(path_to_pdf) as doc:
+    #         for page in doc:
+    #             text += page.get_text()
+
+    #     # Use LangChain's character splitter to chunk the text
+    #     splitter = RecursiveCharacterTextSplitter(
+    #         chunk_size=1000, chunk_overlap=100, separators=["\n\n", "\n", ".", " "]
+    #     )
+    #     chunks = splitter.create_documents([text])
+
+    #     return chunks
 
     def load_chunks_into_pinecone(self, docling_chunks, index_name, namespace):
         """Docling chunks ko Pinecone mein daal dega"""
@@ -113,4 +113,4 @@ if __name__ == "__main__":
     load_dotenv()
 
     data_ingestor = DataIngestor()
-    data_ingestor.ingest_pdf("files/3.pdf", "rfp-agent", "test")
+    data_ingestor.ingest_pdf("files/1.pdf", "rfp-agent", "test")

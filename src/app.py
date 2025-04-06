@@ -20,39 +20,25 @@ load_dotenv()
 # read all pdf files and return text
 
 from PDFIngestor.PDFIngestor import DataIngestor
+from agents.rag_agent import RAGAgent
 
 data_ingestor = DataIngestor()
 query_agent = QueryAgent()
 
 
-def get_conversational_chain(context, question):
-    prompt_template = """
-    Answer the question as detailed as possible from the provided context, make sure to provide all the details, if the answer is not in
-    provided context just say, "answer is not available in the context", don't provide the wrong answer\n\n
-    Context:\n {context}?\n
-    Question: \n{question}\n
+def use_rag_agent(question: str) -> str:
+    """Uses the RAG agent to analyze the context and answer the question."""
+    query_agent = QueryAgent()
+    context = query_agent.retrieve_relevant_data(user_query=question, namespace="test")
 
-    Answer:
-    """
+    context = context = "\n\n".join(context)
+    if context == "No relevant data found":
+        return context
 
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-pro-exp-03-25",
-        client=genai,
-        temperature=0.3,
-    )
-    prompt = PromptTemplate(
-        template=prompt_template, input_variables=["context", "question"]
-    )
-    ans = model.invoke(
-        input=prompt.format(context=f"{context}", question=f"{question}"),
-        # messages=[
-        #     {
-        #         "role": "user",
-        #         "content": prompt.format(context=f"{context}", question=f"{question}"),
-        #     }
-        # ],
-    )
-    return ans
+    rag_agent = RAGAgent()
+    response = rag_agent.invoke(context, question)
+
+    return response
 
 
 def clear_chat_history():
@@ -64,12 +50,7 @@ def clear_chat_history():
 def user_input(user_question):
     """User se input le raha hai"""
 
-    ref = query_agent.retrieve_relevant_data(user_question, "test")
-    from langchain.schema import Document
-
-    ref = [Document(page_content=d, metadata={}) for d in ref]
-
-    ans = get_conversational_chain(ref, user_question)
+    ans = use_rag_agent(user_question)
 
     # response = chain(
     #     {"input_documents": ref, "question": user_question},
@@ -143,12 +124,12 @@ def main():
                 response = user_input(prompt)
                 placeholder = st.empty()
                 full_response = ""
-                for item in response["output_text"]:
-                    full_response += item
-                    placeholder.markdown(full_response)
-                placeholder.markdown(full_response)
+                # for item in response["output_text"]:
+                #     full_response += item
+                #     placeholder.markdown(full_response)
+                placeholder.markdown(response)
         if response is not None:
-            message = {"role": "assistant", "content": full_response}
+            message = {"role": "assistant", "content": response}
             st.session_state.messages.append(message)
 
 

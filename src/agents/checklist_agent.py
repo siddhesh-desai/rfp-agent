@@ -33,7 +33,7 @@ class ChecklistAgent:
     """
 
     def __init__(
-        self, model: str = "gemini-2.5-pro-exp-03-25"
+        self, model: str = "gemini-2.0-flash"
     ):  # Default to a specific Gemini model
         """
         Initializes the ChecklistAgent with a Google Generative AI model.

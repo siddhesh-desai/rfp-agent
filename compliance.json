@@ -1,0 +1,30 @@
+{
+    "compliance_criteria": [
+        {
+            "criteria": "Minimum Years of Experience",
+            "required": "minimum of three (3) years of business in Temporary Staffing Services at time of bid due date",
+            "current": "7 years",
+            "matches": true
+        },
+        {
+            "criteria": "Service Scope Match",
+            "required": "temporary staffing agencies to provide temporary employees of indefinite quantities on an as-needed, non-exclusive basis. All proposals submitted must specifically address each element and requirements listed throughout this RFP.",
+            "current": "Administrative, IT, Legal & Credentialing Staffing",
+            "matches": true
+        },
+        {'criteria': "Insurance - Workers' Compensation", 'required': 'Workers’ Compensation/Employer’s Liability', 'current': "Travelers Insurance, Policy #TX-884529-A; includes Workers' Comp, Liability, and Auto", 'matches': True
+        },
+        {'criteria': 'Insurance - General Liability', 'required': 'Comprehensive Commercial General Liability', 'current': "Travelers Insurance, Policy #TX-884529-A; includes Workers' Comp, Liability, and Auto", 'matches': True
+        },
+        {'criteria': 'Insurance - Auto Liability', 'required': 'Automobile liability', 'current': "Travelers Insurance, Policy #TX-884529-A; includes Workers' Comp, Liability, and Auto", 'matches': True
+        },
+        {'criteria': 'Texas Employment Agency License', 'required': 'Proposals must include a copy of any license(s), certification(s), registration(s), permit(s), etc. as required by authorities having jurisdiction: local, state, county, and/or federal.', 'current': 'Texas Employment Agency License #TXEA-34892', 'matches': True
+        },
+        {'criteria': 'HUB/MBE/DBE Certification', 'required': 'Please submit proof of Historically Underutilized Business “HUB” state certificate.  If not certified, but you intend to subcontract services, please Submit Attachment A.  If you do not intend to subcontract services, write “None” on Attachment A and submit it. The Agency shall make a good faith effort to utilize Minority/Women and/or Disadvantaged Businesses (M/W/DBEs) in contracts for construction, services (including professional and consulting Services), and commodities.  Please submit proof of M/W/DBE certificate.', 'current': 'Not certified. NO MBE Certification', 'matches': False
+        },
+        {'criteria': 'W-9 Form', 'required': 'Contractors are to complete Form W-9 and submit with Proposal Documents.', 'current': 'Attached (TIN: 47-6392011)', 'matches': True
+        },
+        {'criteria': 'Certificate of Insurance', 'required': 'Proof of insurance MUST be submitted with the proposal; failure to do so will lead to disqualification.  Upon award of the contract, MHMR must receive a Certificate of Insurance naming MHMR as an insured party.', 'current': "Travelers Insurance, Policy #TX-884529-A; includes Workers' Comp, Liability, and Auto", 'matches': True
+        }
+    ], 'overall_eligibility_assessment': "FirstStaff Workforce Solutions, LLC appears generally eligible based on meeting minimum experience requirements, possessing necessary licenses and insurance, and offering services aligning with the RFP scope.  However, the lack of HUB/MBE/DBE certification may affect the overall evaluation score.  Further review of the RFP's detailed requirements and the company's full proposal is needed for a conclusive eligibility assessment."
+}

@@ -5,7 +5,14 @@ from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 import logging
+
 from agents.prompts import COMPLIANCE_AGENT_PROMPT
+
+# from prompts import COMPLIANCE_AGENT_PROMPT
+import os
+from groq import Groq
+import instructor
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -47,23 +54,28 @@ class ComplianceAgent:
     and returns a structured JSON compliance report with dynamically identified criteria.
     """
 
-    def __init__(self, model: str = "gemini-1.5-flash-latest"):
-        google_api_key = os.getenv("GEMINI_API_KEY")
-        if not google_api_key:
-            logger.error("GOOGLE_API_KEY environment variable is not set.")
-            raise ValueError("GOOGLE_API_KEY environment variable must be set.")
+    def __init__(self, model: str = "gemini-2.0-flash"):
+        # google_api_key = os.getenv("GEMINI_API_KEY")
+        # if not google_api_key:
+        #     logger.error("GOOGLE_API_KEY environment variable is not set.")
+        #     raise ValueError("GOOGLE_API_KEY environment variable must be set.")
 
         try:
-            self.llm = ChatGoogleGenerativeAI(
-                model=model,
-                google_api_key=google_api_key,
-                temperature=0,
-                convert_system_message_to_human=True,
-            )
-            self.structured_llm = self.llm.with_structured_output(ComplianceReport)
-            logger.info(
-                f"Initialized ChatGoogleGenerativeAI model '{model}' with structured output."
-            )
+            client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+            self.client = instructor.from_groq(client)
+
+            # self.llm = ChatGoogleGenerativeAI(
+            #     model=model,
+            #     google_api_key=google_api_key,
+            #     temperature=0,
+            #     convert_system_message_to_human=True,
+            # )
+            # self.structured_llm = self.llm.with_structured_output(ComplianceReport)
+
+            # self.str
+            # logger.info(
+            #     f"Initialized ChatGoogleGenerativeAI model '{model}' with structured output."
+            # )
         except Exception as e:
             logger.exception(f"Failed to initialize Google AI model: {e}")
             raise
@@ -79,16 +91,42 @@ class ComplianceAgent:
             logger.error("RFP text or Company Profile text is empty.")
             return {"error": "RFP or Company Profile text cannot be empty."}
 
-        logger.info("Creating dynamic analysis chain with Google model...")
-        try:
-            chain = self.prompt_template | self.structured_llm
-            logger.info("Invoking dynamic analysis chain...")
-            response = chain.invoke(
-                {"rfp_text": rfp_text, "company_profile": company_profile}
-            )
-            logger.info("Successfully received structured response from Google model.")
-            return response.dict()
+        if len(rfp_text) > 5000:
+            logger.error("RFP text is too long.")
+            rfp_text = rfp_text[:5000]
 
+        # logger.info("Creating dynamic analysis chain with Google model...")
+        # try:
+        #     chain = self.prompt_template | self.structured_llm
+        #     logger.info("Invoking dynamic analysis chain...")
+        #     response = chain.invoke(
+        #         {"rfp_text": rfp_text, "company_profile": company_profile}
+        #     )
+        #     logger.info("Successfully received structured response from Google model.")
+        #     return response.dict()
+
+        # except Exception as e:
+        #     logger.exception(
+        #         f"Error invoking dynamic compliance agent with Google model: {e}"
+        #     )
+        #     return {
+        #         "error": f"Failed to generate compliance report using Google model. Error: {str(e)}"
+        #     }
+        try:
+            response = self.client.chat.completions.create(
+                model="qwen-qwq-32b",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": self.prompt_template.format(
+                            rfp_text=rfp_text, company_profile=company_profile
+                        ),
+                    },
+                ],
+                response_model=ComplianceReport,
+            )
+            print(response)
+            return response
         except Exception as e:
             logger.exception(
                 f"Error invoking dynamic compliance agent with Google model: {e}"
